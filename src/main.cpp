@@ -1,127 +1,82 @@
 #include <iostream>
-#include <cassert>
-#include <chrono>
 
 template<class T>
-class DynamicArray
+class Auto_ptr3
 {
 private:
-	T* m_array;
-	int m_length;
+	T* m_ptr;
 public:
-	DynamicArray(int length)
-	: m_array{new T[length]}, m_length{length}
-		{
-			assert(length > 0);
-		}
-	~DynamicArray()
+	Auto_ptr3(T *ptr = nullptr) : m_ptr{ptr}
+	{}
+
+	~Auto_ptr3()
 	{
-		delete m_array;
+		delete m_ptr;
 	}
 
-	//Copy semantic with deep copying
-	DynamicArray(const DynamicArray &d) = delete;
+	Auto_ptr3(const Auto_ptr3& a) = delete;
 	// {
-	// 	m_array = new T[d.m_length];
-	// 	m_length = d.m_length;
-	// 	for(int index{0}; index < m_length; ++index)
-	// 	{
-	// 		m_array[index] = d.m_array[index];
-	// 	}
+	// 	m_ptr = new T;
+	// 	*m_ptr = *a.m_ptr;
 	// }
 
-	DynamicArray& operator=(const DynamicArray& d) = delete;
+	Auto_ptr3(Auto_ptr3&& a) noexcept : m_ptr{a.m_ptr}
+	{
+		a.m_ptr = nullptr;
+	}
+
+	Auto_ptr3& operator=(const Auto_ptr3& a) = delete;
 	// {
-	// 	if(this == &d)
+	// 	if(this == &a)
 	// 	{
 	// 		return *this;
 	// 	}
-	// 	delete[] m_array;
-	// 	m_array = new T[d.m_length];
-	// 	m_length = d.m_length;
-	// 	for(int index{0}; index < m_length; ++index)
-	// 	{
-	// 		m_array[index] = d.m_array[index];
-	// 	}
+	// 	delete m_ptr;
+	// 	m_ptr = new T;
+	// 	*m_ptr = *a.m_ptr;
 	// 	return *this;
 	// }
 
-   //Move semantic
-   DynamicArray(DynamicArray &&d) noexcept
-   : m_array{d.m_array}, m_length{d.m_length}
-   {
-      d.m_length = 0;
-      d.m_array = nullptr;
-   }
+	Auto_ptr3& operator=(Auto_ptr3&& a) noexcept
+	{
+		if(&a == this)
+		{
+			return *this;
+		}
+		delete m_ptr;
+		m_ptr = a.m_ptr;
+		a.m_ptr = nullptr;
+		return *this;
+	}
 
-   DynamicArray& operator=(DynamicArray &&d) noexcept
-   {
-      if(this == &d)
-      {
-         return *this;
-      }
-      delete[] m_array;
-      m_array = d.m_array;
-      m_length = d.m_length;
-      d.m_length = 0;
-      d.m_array = nullptr;
-      return *this;
-   }
-
-	int getLength() const
-	{
-		return m_length;
-	}
-	T& operator[](int index)
-	{
-		return m_array[index];
-	}
-	const T& operator[](int index) const
-	{
-		return m_array[index];
-	}
+	T& operator*() const { return *m_ptr; }
+	T* operator->() const { return m_ptr; }
+	bool isNull() const {return m_ptr == nullptr;}
 };
 
-class Timer
+class Resource
 {
-private:
-	using clock_t = std::chrono::high_resolution_clock;
-	using second_t = std::chrono::duration<double, std::ratio<1>>;
-	std::chrono::time_point<clock_t> m_beg;
 public:
-	Timer() : m_beg{clock_t::now()}
-		{}
-	void reset()
+	Resource()
 	{
-		m_beg = clock_t::now();
+		std::cout << "Resource aquired\n";
 	}
-	double elapsed() const
+
+	~Resource()
 	{
-		return std::chrono::duration_cast<second_t>(clock_t::now() - m_beg).count();
+		std::cout << "Resource destroyed\n";
 	}
 };
 
-DynamicArray<int> cloneArrayAndDouble(const DynamicArray<int> &arr)
+Auto_ptr3<Resource> generateResource()
 {
-	DynamicArray<int> dbl{arr.getLength()};
-	for(int index{}; index < arr.getLength(); ++index)
-	{
-		dbl[index] = arr[index] * 2;
-	}
-	return dbl;
+	Auto_ptr3<Resource> res{new Resource};
+	return res;
 }
 
 int main()
 {
-	Timer t;
-	DynamicArray<int> arr{1000000};
-	for(int index{}; index < 1000000; ++index)
-	{
-		arr[index] = index;
-	}
-
-	DynamicArray<int> dbl = cloneArrayAndDouble(arr);
-	std::cout << t.elapsed();
-
+	Auto_ptr3<Resource> mainRes;
+	mainRes = generateResource();
 	return 0;
 }
