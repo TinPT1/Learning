@@ -1,82 +1,113 @@
 #include <iostream>
+#include <chrono>
 
-template<class T>
-class Auto_ptr3
+class Timer
 {
 private:
-	T* m_ptr;
+	using clock_t = std::chrono::high_resolution_clock;
+	using second_t = std::chrono::duration<double, std::ratio<1>>;
+	std::chrono::time_point<clock_t> m_beg;
 public:
-	Auto_ptr3(T *ptr = nullptr) : m_ptr{ptr}
+	Timer() : m_beg{clock_t::now()}
 	{}
-
-	~Auto_ptr3()
+	void reset()
 	{
-		delete m_ptr;
+		m_beg = clock_t::now();
+	}
+	double elapse() const
+	{
+		return std::chrono::duration_cast<second_t>(clock_t::now() - m_beg).count();
+	}
+};
+
+template<class T>
+class DynamicArray
+{
+private:
+	T* m_array;
+	int m_length;
+public:
+	DynamicArray(int length = 0)
+	: m_array{new T[length]}, m_length{length}
+	{
 	}
 
-	Auto_ptr3(const Auto_ptr3& a) = delete;
-	// {
-	// 	m_ptr = new T;
-	// 	*m_ptr = *a.m_ptr;
-	// }
-
-	Auto_ptr3(Auto_ptr3&& a) noexcept : m_ptr{a.m_ptr}
+	~DynamicArray()
 	{
-		a.m_ptr = nullptr;
+		delete[] m_array;
 	}
 
-	Auto_ptr3& operator=(const Auto_ptr3& a) = delete;
-	// {
-	// 	if(this == &a)
-	// 	{
-	// 		return *this;
-	// 	}
-	// 	delete m_ptr;
-	// 	m_ptr = new T;
-	// 	*m_ptr = *a.m_ptr;
-	// 	return *this;
-	// }
+	DynamicArray(const DynamicArray& a) : m_length{a.m_length}
+	{
+		m_array = new T[m_length];
+		for(int i{0}; i < m_length; ++i)
+		{
+			m_array[i] = a.m_array[i];
+		}
+	}
 
-	Auto_ptr3& operator=(Auto_ptr3&& a) noexcept
+	DynamicArray(DynamicArray&& a) noexcept
+	: m_array{a.m_array}, m_length{a.m_length}
+	{
+		a.m_array = nullptr;
+		a.m_length = 0;
+	}
+
+	DynamicArray& operator=(const DynamicArray& a)
 	{
 		if(&a == this)
 		{
 			return *this;
 		}
-		delete m_ptr;
-		m_ptr = a.m_ptr;
-		a.m_ptr = nullptr;
+		delete[] m_array;
+		m_length = a.m_length;
+		m_array = new T[m_length];
+		for(int i{0}; i < m_length; ++i)
+		{
+			m_array[i] = a.m_array[i];
+		}
 		return *this;
 	}
 
-	T& operator*() const { return *m_ptr; }
-	T* operator->() const { return m_ptr; }
-	bool isNull() const {return m_ptr == nullptr;}
-};
-
-class Resource
-{
-public:
-	Resource()
+	DynamicArray& operator=(DynamicArray&& a) noexcept
 	{
-		std::cout << "Resource aquired\n";
+		if(&a == this)
+		{
+			return *this;
+		}
+		delete[] m_array;
+		m_array = a.m_array;
+		m_length = a.m_length;
+		a.m_array = nullptr;
+		a.m_length = 0;
+		return *this;
 	}
 
-	~Resource()
-	{
-		std::cout << "Resource destroyed\n";
-	}
+	int getLength() const { return m_length; }
+	T& operator[](int index) { return m_array[index]; }
+	const T& operator[](int index) const { return m_array[index]; }
 };
 
-Auto_ptr3<Resource> generateResource()
+DynamicArray<int> cloneArrayAndDouble(const DynamicArray<int>& a)
 {
-	Auto_ptr3<Resource> res{new Resource};
-	return res;
+	DynamicArray<int> dbl{a.getLength()};
+	for(int i{0}; i < a.getLength(); ++i)
+	{
+		dbl[i] = a[i] * 2;
+	}
+	return dbl;
 }
 
 int main()
 {
-	Auto_ptr3<Resource> mainRes;
-	mainRes = generateResource();
+	Timer t;
+	DynamicArray<int> arr(1000000);
+	for(int i{0}; i < arr.getLength(); ++i)
+	{
+		arr[i] = i;
+	}
+	arr = cloneArrayAndDouble(arr);
+	std::cout << t.elapse();
+
 	return 0;
 }
