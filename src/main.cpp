@@ -1,113 +1,94 @@
 #include <iostream>
-#include <chrono>
+#include <string>
+#include <utility>
+#include <stdexcept>
+#include <string_view>
 
-class Timer
+class MoveClass
 {
 private:
-	using clock_t = std::chrono::high_resolution_clock;
-	using second_t = std::chrono::duration<double, std::ratio<1>>;
-	std::chrono::time_point<clock_t> m_beg;
+	int* m_resource{};
 public:
-	Timer() : m_beg{clock_t::now()}
+	MoveClass() = default;
+
+	MoveClass(int resource)
+	: m_resource{new int{resource}}
 	{}
-	void reset()
+
+	//Copy constructor
+	MoveClass(const MoveClass& that)
 	{
-		m_beg = clock_t::now();
+		//deep copy
+		if(that.m_resource != nullptr)
+		{
+			m_resource = new int{*that.m_resource};
+		}
 	}
-	double elapse() const
+
+	//Move constructor
+	MoveClass(MoveClass&& that) noexcept
+	: m_resource{that.m_resource}
 	{
-		return std::chrono::duration_cast<second_t>(clock_t::now() - m_beg).count();
+			that.m_resource = nullptr;
+	}
+
+	~MoveClass()
+	{
+		std::cout << "destroying " << *this << '\n';
+		delete m_resource;
+	}
+
+	friend std::ostream& operator<<(std::ostream &out, const MoveClass& moveClass)
+	{
+		out << "MoveClass(";
+		if(moveClass.m_resource == nullptr)
+		{
+			out << "empty";
+		}
+		else
+		{
+			out << *moveClass.m_resource;
+		}
+		out << ')';
+		return out;
 	}
 };
 
-template<class T>
-class DynamicArray
+class CopyClass
 {
-private:
-	T* m_array;
-	int m_length;
 public:
-	DynamicArray(int length = 0)
-	: m_array{new T[length]}, m_length{length}
-	{
-	}
+	bool m_throw{};
 
-	~DynamicArray()
-	{
-		delete[] m_array;
-	}
+	CopyClass() = default;
 
-	DynamicArray(const DynamicArray& a) : m_length{a.m_length}
+	//Copy constructor throws an exception when copying from a CopyClass object where its m_throw is "true"
+	CopyClass(const CopyClass& that) : m_throw{that.m_throw}
 	{
-		m_array = new T[m_length];
-		for(int i{0}; i < m_length; ++i)
+		if(m_throw == true)
 		{
-			m_array[i] = a.m_array[i];
+			throw std::runtime_error("abort!");
 		}
 	}
-
-	DynamicArray(DynamicArray&& a) noexcept
-	: m_array{a.m_array}, m_length{a.m_length}
-	{
-		a.m_array = nullptr;
-		a.m_length = 0;
-	}
-
-	DynamicArray& operator=(const DynamicArray& a)
-	{
-		if(&a == this)
-		{
-			return *this;
-		}
-		delete[] m_array;
-		m_length = a.m_length;
-		m_array = new T[m_length];
-		for(int i{0}; i < m_length; ++i)
-		{
-			m_array[i] = a.m_array[i];
-		}
-		return *this;
-	}
-
-	DynamicArray& operator=(DynamicArray&& a) noexcept
-	{
-		if(&a == this)
-		{
-			return *this;
-		}
-		delete[] m_array;
-		m_array = a.m_array;
-		m_length = a.m_length;
-		a.m_array = nullptr;
-		a.m_length = 0;
-		return *this;
-	}
-
-	int getLength() const { return m_length; }
-	T& operator[](int index) { return m_array[index]; }
-	const T& operator[](int index) const { return m_array[index]; }
 };
 
-DynamicArray<int> cloneArrayAndDouble(const DynamicArray<int>& a)
-{
-	DynamicArray<int> dbl{a.getLength()};
-	for(int i{0}; i < a.getLength(); ++i)
-	{
-		dbl[i] = a[i] * 2;
-	}
-	return dbl;
-}
 
 int main()
 {
-	Timer t;
-	DynamicArray<int> arr(1000000);
-	for(int i{0}; i < arr.getLength(); ++i)
+	std::pair<MoveClass, CopyClass> mypair{MoveClass{13}, CopyClass{}};
+	std::cout << "mypair.first: " << mypair.first << '\n';
+	try
 	{
-		arr[i] = i;
+		mypair.second.m_throw = true;
+		// std::pair<MoveClass, CopyClass> moved_pair{std::move(mypair)};
+		std::pair<MoveClass, CopyClass> moved_pair{std::move_if_noexcept(mypair)};
+		std::cout << "moved_pair exits\n";
 	}
-	arr = cloneArrayAndDouble(arr);
-	std::cout << t.elapse();
+	catch(const std::exception& ex)
+	{
+		std::cerr << "Error found: " << ex.what() << '\n';
+	}
+
+	std::cout << "mypair.first " << mypair.first << '\n';
 
 	return 0;
 }
