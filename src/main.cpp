@@ -1,94 +1,34 @@
 #include <iostream>
-#include <string>
-#include <utility>
-#include <stdexcept>
-#include <string_view>
+#include <memory>
 
-class MoveClass
+class Fraction
 {
 private:
-	int* m_resource{};
+	int m_numerator{0};
+	int m_denominator{1};
 public:
-	MoveClass() = default;
-
-	MoveClass(int resource)
-	: m_resource{new int{resource}}
+	Fraction(int numerator = 0, int denominator = 1)
+	: m_numerator{numerator}, m_denominator{denominator}
 	{}
 
-	//Copy constructor
-	MoveClass(const MoveClass& that)
+	friend std::ostream& operator<<(std::ostream& out, const Fraction& f)
 	{
-		//deep copy
-		if(that.m_resource != nullptr)
-		{
-			m_resource = new int{*that.m_resource};
-		}
-	}
-
-	//Move constructor
-	MoveClass(MoveClass&& that) noexcept
-	: m_resource{that.m_resource}
-	{
-			that.m_resource = nullptr;
-	}
-
-	~MoveClass()
-	{
-		std::cout << "destroying " << *this << '\n';
-		delete m_resource;
-	}
-
-	friend std::ostream& operator<<(std::ostream &out, const MoveClass& moveClass)
-	{
-		out << "MoveClass(";
-		if(moveClass.m_resource == nullptr)
-		{
-			out << "empty";
-		}
-		else
-		{
-			out << *moveClass.m_resource;
-		}
-		out << ')';
+		out << f.m_numerator << '/' << f.m_denominator << '\n';
 		return out;
 	}
 };
 
-class CopyClass
+void printFraction(std::unique_ptr<Fraction> ptr)
 {
-public:
-	bool m_throw{};
-
-	CopyClass() = default;
-
-	//Copy constructor throws an exception when copying from a CopyClass object where its m_throw is "true"
-	CopyClass(const CopyClass& that) : m_throw{that.m_throw}
-	{
-		if(m_throw == true)
-		{
-			throw std::runtime_error("abort!");
-		}
-	}
-};
-
+	if (ptr)
+		std::cout << *ptr << '\n';
+}
 
 int main()
 {
-	std::pair<MoveClass, CopyClass> mypair{MoveClass{13}, CopyClass{}};
-	std::cout << "mypair.first: " << mypair.first << '\n';
-	try
-	{
-		mypair.second.m_throw = true;
-		// std::pair<MoveClass, CopyClass> moved_pair{std::move(mypair)};
-		std::pair<MoveClass, CopyClass> moved_pair{std::move_if_noexcept(mypair)};
-		std::cout << "moved_pair exits\n";
-	}
-	catch(const std::exception& ex)
-	{
-		std::cerr << "Error found: " << ex.what() << '\n';
-	}
+	auto ptr{ std::make_unique<Fraction>(3, 5) };
 
-	std::cout << "mypair.first " << mypair.first << '\n';
+	printFraction(std::move(ptr));
 
 	return 0;
 }
