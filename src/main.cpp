@@ -1,34 +1,55 @@
 #include <iostream>
+#include <string>
 #include <memory>
 
-class Fraction
+class Person
 {
 private:
-	int m_numerator{0};
-	int m_denominator{1};
+	std::string m_name;
+	std::weak_ptr<Person> m_partner;
 public:
-	Fraction(int numerator = 0, int denominator = 1)
-	: m_numerator{numerator}, m_denominator{denominator}
-	{}
-
-	friend std::ostream& operator<<(std::ostream& out, const Fraction& f)
+	Person(std::string name) : m_name{name}
 	{
-		out << f.m_numerator << '/' << f.m_denominator << '\n';
-		return out;
+		std::cout << m_name << " is created\n";
+	}
+
+	~Person()
+	{
+		std::cout << m_name << " is destroyed\n";
+	}
+
+	friend bool partnerUp(std::shared_ptr<Person> &p1, std::shared_ptr<Person> &p2)
+	{
+		if(!p1 || !p2)
+		{
+			return false;
+		}
+		p1->m_partner = p2;
+		p2->m_partner = p1;
+		std::cout << p1->m_name << " is now a partner of " << p2->m_name << '\n';
+		return true;
+	}
+
+	const std::shared_ptr<Person> getPartner() const
+	{
+		return m_partner.lock();
+	}
+
+	const std::string getName() const
+	{
+		return m_name;
 	}
 };
 
-void printFraction(std::unique_ptr<Fraction> ptr)
-{
-	if (ptr)
-		std::cout << *ptr << '\n';
-}
-
 int main()
 {
-	auto ptr{ std::make_unique<Fraction>(3, 5) };
+	auto lucy{std::make_shared<Person>("Lucy")};
+	auto ricky{std::make_shared<Person>("Ricky")};
 
-	printFraction(std::move(ptr));
+	partnerUp(lucy, ricky);
+
+	auto partner = ricky->getPartner();
+	std::cout << ricky->getName() << "'s partner is: " << partner->getName() << '\n';
 
 	return 0;
 }
