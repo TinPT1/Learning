@@ -1,55 +1,44 @@
 #include <iostream>
+#include <chrono>
+#include <cstdlib>
+#include <ctime>
 #include <string>
-#include <memory>
 
-class Person
+class Timer
 {
 private:
-	std::string m_name;
-	std::weak_ptr<Person> m_partner;
+	using clock_t = std::chrono::high_resolution_clock;
+	using second_t = std::chrono::duration<double, std::ratio<1>>;
+	std::chrono::time_point<clock_t> m_beg;
 public:
-	Person(std::string name) : m_name{name}
+	Timer() : m_beg{clock_t::now()}
+	{}
+
+	void reset()
 	{
-		std::cout << m_name << " is created\n";
+		m_beg = clock_t::now();
 	}
 
-	~Person()
+	double elapse() const
 	{
-		std::cout << m_name << " is destroyed\n";
-	}
-
-	friend bool partnerUp(std::shared_ptr<Person> &p1, std::shared_ptr<Person> &p2)
-	{
-		if(!p1 || !p2)
-		{
-			return false;
-		}
-		p1->m_partner = p2;
-		p2->m_partner = p1;
-		std::cout << p1->m_name << " is now a partner of " << p2->m_name << '\n';
-		return true;
-	}
-
-	const std::shared_ptr<Person> getPartner() const
-	{
-		return m_partner.lock();
-	}
-
-	const std::string getName() const
-	{
-		return m_name;
+		return std::chrono::duration_cast<second_t>(clock_t::now() - m_beg).count();
 	}
 };
 
 int main()
 {
-	auto lucy{std::make_shared<Person>("Lucy")};
-	auto ricky{std::make_shared<Person>("Ricky")};
+	Timer t;
 
-	partnerUp(lucy, ricky);
+	std::srand(std::time(nullptr));
+	std::string s;
+	s.reserve(64);
+	for(int i{0}; i < 64; ++i)
+	{
+		s += 'a' + std::rand() % 26;
+	}
+	std::cout << s << std::endl;
 
-	auto partner = ricky->getPartner();
-	std::cout << ricky->getName() << "'s partner is: " << partner->getName() << '\n';
+	std::cout << "Time remaining is " << t.elapse() << " second\n";
 
 	return 0;
 }
